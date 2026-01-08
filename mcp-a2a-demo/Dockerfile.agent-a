@@ -1,0 +1,33 @@
+# --- 第一阶段: 构建 (Builder) ---
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 复制 package.json 并安装所有依赖 (包括 devDependencies 以便编译 TS)
+COPY package*.json ./
+RUN npm install
+
+# 复制源代码
+COPY . .
+
+# 编译 TypeScript -> JavaScript
+# (这会生成 dist 文件夹)
+RUN npm run build
+
+# --- 第二阶段: 运行 (Runner) ---
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 只复制 package.json 安装生产依赖 (由 build 变为 production)
+COPY package*.json ./
+RUN npm install --production
+
+# 从第一阶段复制编译好的 JS 文件
+COPY --from=builder /app/dist ./dist
+
+# 暴露端口 (Agent A 是 3000)
+EXPOSE 3000
+
+# 启动命令
+CMD ["npm", "run", "prod:a"]
